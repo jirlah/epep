@@ -85,7 +85,7 @@ function update() {
     });
 
     // Tambah musuh
-    if (Math.random() < 0.03) createEnemy();
+    if (Math.random() < 0.01) createEnemy();
 
     // Gerakan musuh
     enemies.forEach((enemy, index) => {
