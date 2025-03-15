@@ -46,7 +46,7 @@ const enemies = [];
 function createEnemy() {
     loader.load("assets/models/enemy.gltf", function (gltf) {
         const enemy = gltf.scene;
-        enemy.position.set(Math.random() * 6 - 3, 1, -10);
+        enemy.position.set(0, 1, 0);
         scene.add(enemy);
         enemy.scale.set(5, 5, 5); // Besarkan karakter
         enemies.push(enemy);
