@@ -1,119 +1,115 @@
-// Setup scene, camera, renderer
+// Buat Scene, Kamera, dan Renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Tambahkan pencahayaan
-const light = new THREE.PointLight(0xffffff, 1, 100);
-light.position.set(0, 10, 5);
+// Tambah Kontrol Kamera (Bisa lihat sekitar)
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
+// Tambah Cahaya
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 10, 5);
 scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
 
-// Buat pemain (kotak hijau)
-const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-scene.add(player);
-player.position.y = -3;
+// Tambah Lantai
+const floorTexture = new THREE.TextureLoader().load("assets/textures/floor.jpg");
+const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
 
-// Array untuk peluru dan musuh
-const bullets = [];
-const enemies = [];
+// Tambah Langit
+const skyTexture = new THREE.TextureLoader().load("assets/textures/sky.jpg");
+scene.background = skyTexture;
 
-// Senjata
-let weaponType = "pistol"; // Default
+// Posisi Kamera
+camera.position.set(0, 2, 5);
 
-// Fungsi membuat musuh
-function createEnemy() {
-    const enemyGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-    const enemyMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
-    enemy.position.set(Math.random() * 6 - 3, 3, 0);
-    scene.add(enemy);
-    enemies.push(enemy);
-}
-
-// Kontrol pemain
-const keys = {};
-window.addEventListener("keydown", (e) => (keys[e.key] = true));
-window.addEventListener("keyup", (e) => (keys[e.key] = false));
-
-// Ganti senjata
-window.addEventListener("keydown", (e) => {
-    if (e.key === "1") weaponType = "pistol";
-    if (e.key === "2") weaponType = "shotgun";
-    if (e.key === "3") weaponType = "laser";
+// Load Model Senjata
+const loader = new THREE.GLTFLoader();
+let weapon;
+loader.load("assets/models/weapon.glb", function (gltf) {
+    weapon = gltf.scene;
+    scene.add(weapon);
+    weapon.position.set(0, 1.5, -1.5);
 });
 
-// Fungsi menembak
-function shoot() {
-    if (weaponType === "pistol") {
-        createBullet(player.position.x, 0xffff00, 0.2);
-    } else if (weaponType === "shotgun") {
-        createBullet(player.position.x - 0.3, 0xff8800, 0.2);
-        createBullet(player.position.x, 0xff8800, 0.2);
-        createBullet(player.position.x + 0.3, 0xff8800, 0.2);
-    } else if (weaponType === "laser") {
-        createBullet(player.position.x, 0x00ffff, 0.5);
-    }
+// Array Musuh
+const enemies = [];
+
+// Fungsi Buat Musuh
+function createEnemy() {
+    loader.load("assets/models/enemy.glb", function (gltf) {
+        const enemy = gltf.scene;
+        enemy.position.set(Math.random() * 6 - 3, 1, -10);
+        scene.add(enemy);
+        enemies.push(enemy);
+    });
 }
 
-// Fungsi membuat peluru
-function createBullet(x, color, size) {
-    const bulletGeometry = new THREE.BoxGeometry(size, 0.5, size);
-    const bulletMaterial = new THREE.MeshBasicMaterial({ color: color });
-    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-    bullet.position.set(x, player.position.y + 0.5, player.position.z);
+// Musuh Muncul Setiap 3 Detik
+setInterval(createEnemy, 3000);
+
+// Peluru & Suara
+const bullets = [];
+const gunshotSound = new Audio("assets/sounds/gunshot.mp3");
+
+// Event Klik untuk Menembak
+window.addEventListener("click", () => {
+    if (!weapon) return;
+
+    gunshotSound.play(); // Mainkan suara tembakan
+
+    const bullet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffff00 })
+    );
+    bullet.position.set(weapon.position.x, weapon.position.y, weapon.position.z - 0.5);
     scene.add(bullet);
     bullets.push(bullet);
-}
+});
 
-// Loop game
-function update() {
-    if (keys["ArrowLeft"] && player.position.x > -3) player.position.x -= 0.1;
-    if (keys["ArrowRight"] && player.position.x < 3) player.position.x += 0.1;
-    if (keys[" "] && bullets.length < 10) shoot();
+// Loop Game
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
 
-    // Gerakan peluru
+    // Gerakan Peluru
     bullets.forEach((bullet, index) => {
-        bullet.position.y += 0.1;
-        if (bullet.position.y > 3) {
+        bullet.position.z -= 0.2;
+        if (bullet.position.z < -20) {
             scene.remove(bullet);
             bullets.splice(index, 1);
         }
     });
 
-    // Tambah musuh
-    if (Math.random() < 0.01) createEnemy();
-
-    // Gerakan musuh
+    // Gerakan Musuh
     enemies.forEach((enemy, index) => {
-        enemy.position.y -= 0.02;
-        if (enemy.position.y < -3) {
+        enemy.position.z += 0.02;
+
+        // Cek tabrakan peluru dengan musuh
+        bullets.forEach((bullet, bIndex) => {
+            if (bullet.position.distanceTo(enemy.position) < 0.5) {
+                scene.remove(enemy);
+                scene.remove(bullet);
+                enemies.splice(index, 1);
+                bullets.splice(bIndex, 1);
+            }
+        });
+
+        // Jika musuh sampai ke pemain
+        if (enemy.position.z > 2) {
+            console.log("Kena Musuh!");
             scene.remove(enemy);
             enemies.splice(index, 1);
         }
     });
 
-    // Deteksi tabrakan
-    bullets.forEach((bullet, bIndex) => {
-        enemies.forEach((enemy, eIndex) => {
-            if (bullet.position.distanceTo(enemy.position) < 0.5) {
-                scene.remove(bullet);
-                bullets.splice(bIndex, 1);
-                scene.remove(enemy);
-                enemies.splice(eIndex, 1);
-            }
-        });
-    });
-
     renderer.render(scene, camera);
-    requestAnimationFrame(update);
 }
-
-// Posisi awal kamera
-camera.position.z = 5;
-
-// Mulai game
-update();
+animate();
