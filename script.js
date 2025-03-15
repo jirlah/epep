@@ -44,7 +44,7 @@ const enemies = [];
 
 // Fungsi Buat Musuh
 function createEnemy() {
-    loader.load("assets/models/enemy.glb", function (gltf) {
+    loader.load("assets/models/enemy.gltf", function (gltf) {
         const enemy = gltf.scene;
         enemy.position.set(Math.random() * 6 - 3, 1, -10);
         scene.add(enemy);
@@ -53,7 +53,7 @@ function createEnemy() {
 }
 
 // Musuh Muncul Setiap 3 Detik
-setInterval(createEnemy, 3000);
+setInterval(createEnemy, 10000);
 
 // Peluru & Suara
 const bullets = [];
